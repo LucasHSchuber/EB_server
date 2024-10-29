@@ -26,13 +26,44 @@ db.getConnection((err, connection) => {
   connection.release(); 
 });
 
-app.get("/", (req, res) => {
-    res.send("Welcome to this api")
-})
-
-
 
 // Start the server
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
+
+
+// WELCOME ROUTE
+app.get("/", (req, res) => {
+    res.send("Welcome to this API for Express-Bild")
+})
+
+
+
+
+// ---------------------- JOB TYPE KATEGORISERING ----------------------
+
+
+
+
+
+
+
+
+// ---------------------- SVENSKA SPEL ----------------------
+
+
+
+
+
+
+
+// ---------------------- XXX ----------------------
+
+
+
+
+
+
+
+// ---------------------- YYY ----------------------
