@@ -1,0 +1,33 @@
+# Node modules
+node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+dbConfig.js
+.dbConfig.js
+/dbConfig.js
+
+# Database and cache files
+*.sqlite
+*.db
+*.db-journal
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# npm and Yarn files
+package-lock.json
+yarn.lock
+
+# Build directory
+dist/
+build/
+
