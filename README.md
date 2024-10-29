@@ -1,4 +1,6 @@
-# Express-Bild Main Server
+# Express-Bild Server
+# Lucas H. Schuber
+# Software developer / Systemutvecklare
 
 This repository contains the primary server for the projects at **Express-Bild**. It is built using Node.js and Express, with a MySQL database for data storage, and includes configuration for CORS and body parsing.
 
