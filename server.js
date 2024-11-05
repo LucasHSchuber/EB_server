@@ -45,7 +45,7 @@ app.get("/", (req, res) => {
 // ---------------------- JOB TYPE KATEGORISERING ----------------------
 
 
-// GET - all data from "neo_jobtypes_categories"
+// GET - data from "neo_jobtypes" and "neo_jobtypes_categories"
 app.get('/api/jobtypesandcategories', (req, res) => {
     const { portaluuid } = req.query;
     console.log("Retrieved orderuuid: ", portaluuid);
@@ -224,15 +224,178 @@ app.delete('/api/delete/neo_jobtypes_categories', (req, res) => {
 
 
 
-// ---------------------- SVENSKA SPEL ----------------------
+
+// ---------------------- SVENSKA LAG ----------------------
 
 
+// GET - all data from with join
+app.get('/api/get/svenskalag/data', (req, res) => {
+    const query = `
+       SELECT 
+            p.uuid, 
+            p.name, 
+            p.jobtype_uuid, 
+            MAX(a.start) AS last_activity, 
+            t.*
+        FROM 
+            neo_projects AS p
+        JOIN 
+            neo_activities AS a ON p.uuid = a.project_uuid
+        LEFT JOIN 
+            sl_projects AS t ON p.uuid = t.project_uuid 
+        WHERE 
+            p.lowest_status = 13 
+        GROUP BY 
+            p.uuid;
+    `;
+
+    db.query(query, (error, results) => {
+        if (error) {
+            console.error('SQL error:', error);
+            return res.status(500).json({ 
+                error: 'An error occurred while retrieving data.', 
+                message: "Error", 
+                statuscode: 500
+            });
+        }
+        res.status(200).json({ data: results, statuscode: 200, message: 'OK' });
+    });
+});
+
+
+// GET - data from "neo_jobtypes" and "neo_jobtypes_categories" where ..... from swedish portal and is_deleted = 0
+app.get('/api/get/svenskalag/datainsvenskalagcategory', (req, res) => {
+    const { portaluuid } = req.query;
+    console.log("Retrieved orderuuid: ", portaluuid);
+
+    if (!portaluuid) {
+        return res.status(400).json({ error: 'portaluuid is required.' });
+    }
+
+    const getData = `
+    SELECT 
+        j.jobtype_uuid,
+        j.portaluuid,
+        j.category_id,
+        c.name AS category_name
+    FROM
+        neo_jobtypes j
+    JOIN
+        neo_jobtypes_categories c ON j.category_id = c.id
+    WHERE 
+        j.portaluuid = "2dba368b-6205-11e1-b101-0025901d40ea"
+        AND LOWER(c.name) = LOWER("svenska lag")
+        AND c.is_deleted = 0;  
+    `;
+
+    db.query(getData, [portaluuid], (error, results) => {
+        if (error) {
+          console.error('SQL error:', error);
+          return res.status(500).json({ error: 'An error occurred while getting data.', message: "Error", statuscode: 500, updated: portaluuid });
+        }
+        const currentTime = new Date().toLocaleTimeString();
+        res.status(200).json({ data: results, statuscode: 200, message: 'OK'});
+      });
+})
+
+
+// PUT - update in_progress_date and in_progress_user in "sl_projects" in db
+app.put('/api/put/setinprogress', (req, res) => {
+    const { project_uuid, username, portaluuid } = req.body;
+    console.log("Retrieved project_uuid: ", project_uuid);
+    console.log(req.body);
+    // Check for missing required data
+    if (!project_uuid || !username) {
+        return res.status(400).json({ error: 'Missing required data for /api/put/setinprogress route.' });
+    }
+    const upsertQuery = `
+        INSERT INTO sl_projects (project_uuid, in_progress_date, in_progress_user)
+        VALUES (?, NOW(), ?)
+        ON DUPLICATE KEY UPDATE 
+            in_progress_date = NOW(),
+            in_progress_user = VALUES(in_progress_user)
+    `;
+
+    db.query(upsertQuery, [project_uuid, username], (error, results) => {
+        if (error) {
+            console.error('SQL error:', error);
+            return res.status(500).json({ error: 'An error occurred while updating data in sl_projects.', message: "Error", statuscode: 500, data: results });
+        }
+
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ error: 'Project not found or no changes made.' });
+        }
+        res.status(200).json({ data: results, project_uuid: project_uuid, statuscode: 200, message: 'Project updated successfully.' });
+    });
+});
+
+// PUT - update done_date and done_user in "sl_projects" in db
+app.put('/api/put/setdone', (req, res) => {
+    const { project_uuid, username } = req.body;
+    console.log("Retrieved project_uuid: ", project_uuid);
+
+    // Check for missing required data
+    if (!project_uuid || !username) {
+        return res.status(400).json({ error: 'Missing required data for /api/put/setdone route.' });
+    }
+    const upsertQuery = `
+        INSERT INTO sl_projects (project_uuid, done_date, done_user)
+        VALUES (?, NOW(), ?)
+        ON DUPLICATE KEY UPDATE 
+            done_date = NOW(),
+            done_user = VALUES(done_user)
+    `;
+
+    db.query(upsertQuery, [project_uuid, username], (error, results) => {
+        if (error) {
+            console.error('SQL error:', error);
+            return res.status(500).json({ error: 'An error occurred while updating data in sl_projects.', message: "Error", statuscode: 500, data: results });
+        }
+
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ error: 'Project not found or no changes made.' });
+        }
+        res.status(200).json({ data: results, project_uuid: project_uuid, statuscode: 200, message: 'Project updated successfully.' });
+    });
+});
+
+// PUT - update notes "sl_projects" in db
+app.put('/api/put/notessvenskalag', (req, res) => {
+    const { project_uuid, notes } = req.body;
+    console.log("Retrieved project_uuid: ", project_uuid);
+
+    // Check for missing required data
+    if (!project_uuid) {
+        return res.status(400).json({ error: 'Missing required data for /api/put/notessvenskalag route.' });
+    }
+    const upsertQuery = `
+        INSERT INTO sl_projects (project_uuid, notes)
+        VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE 
+        notes = VALUES(notes)
+    `;
+
+    db.query(upsertQuery, [project_uuid, notes], (error, results) => {
+        if (error) {
+            console.error('SQL error:', error);
+            return res.status(500).json({ error: 'An error occurred while updating notes in sl_projects.', message: "Error", statuscode: 500, data: results });
+        }
+
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ error: 'notes not found or no changes made.' });
+        }
+        res.status(200).json({ data: results, project_uuid: project_uuid, statuscode: 200, message: 'Notes updated successfully.' });
+    });
+});
 
 
 
 
 
 // ---------------------- XXX ----------------------
+
+
+
 
 
 
