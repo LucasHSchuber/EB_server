@@ -299,6 +299,38 @@ app.get('/api/get/svenskalag/datainsvenskalagcategory', (req, res) => {
 })
 
 
+// PUT - update in_progress_date, in_progress_user, done_date and done_user in "sl_projects" in db
+app.put('/api/put/setnone', (req, res) => {
+    const { project_uuid, username, portaluuid } = req.body;
+    console.log("Retrieved project_uuid: ", project_uuid);
+    console.log(req.body);
+    // Check for missing required data
+    if (!project_uuid || !username) {
+        return res.status(400).json({ error: 'Missing required data for /api/put/setnone route.' });
+    }
+    const upsertQuery = `
+        INSERT INTO sl_projects (project_uuid, in_progress_date, in_progress_user, done_date, done_user)
+        VALUES (?, NULL, NULL, NULL, NULL)
+        ON DUPLICATE KEY UPDATE 
+            in_progress_date = NULL,
+            in_progress_user = NULL,
+            done_date = NULL,
+            done_user = NULL
+    `;
+
+    db.query(upsertQuery, [project_uuid], (error, results) => {
+        if (error) {
+            console.error('SQL error:', error);
+            return res.status(500).json({ error: 'An error occurred while updating data in sl_projects.', message: "Error", statuscode: 500, data: results });
+        }
+
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ error: 'Project not found or no changes made.' });
+        }
+        res.status(200).json({ data: results, project_uuid: project_uuid, statuscode: 200, message: 'Project updated successfully.' });
+    });
+});
+
 // PUT - update in_progress_date and in_progress_user in "sl_projects" in db
 app.put('/api/put/setinprogress', (req, res) => {
     const { project_uuid, username, portaluuid } = req.body;
