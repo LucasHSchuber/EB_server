@@ -421,6 +421,29 @@ app.put('/api/put/notessvenskalag', (req, res) => {
 });
 
 
+// PUT - update memberslist "sl_projects" in db
+app.put('/api/put/checkmemberslist', (req, res) => {
+    const { project_uuid, status } = req.body;
+    console.log("Retrieved project_uuid: ", project_uuid);
+    console.log("status:", status);
+    // Check for missing required data
+    if (!project_uuid || !status) {
+        return res.status(400).json({ error: 'Missing required data for /api/put/checkmemberslist route.' });
+    }
+    const upsertQuery = `
+        UPDATE sl_projects SET memberslist = ? WHERE project_uuid = ?
+    `;
+
+    db.query(upsertQuery, [status, project_uuid], (error, results) => {
+        if (error) {
+            console.error('SQL error:', error);
+            return res.status(500).json({ error: 'An error occurred while updating memberslist in sl_projects.', message: "Error", statuscode: 500, data: results });
+        }
+        res.status(200).json({ data: results, project_uuid: project_uuid, statuscode: 200, message: 'Memberslist updated successfully.' });
+    });
+});
+
+
 
 
 
