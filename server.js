@@ -427,17 +427,23 @@ app.put('/api/put/checkmemberslist', (req, res) => {
     console.log("Retrieved project_uuid: ", project_uuid);
     console.log("status:", status);
     // Check for missing required data
-    if (!project_uuid || !status) {
+    if (!project_uuid || status === undefined) {
         return res.status(400).json({ error: 'Missing required data for /api/put/checkmemberslist route.' });
     }
+
     const upsertQuery = `
-        UPDATE sl_projects SET memberslist = ? WHERE project_uuid = ?
+       INSERT INTO sl_projects (project_uuid, memberslist) VALUES (?, ?) 
+       ON DUPLICATE KEY UPDATE 
+       memberslist = VALUES(memberslist);
     `;
 
-    db.query(upsertQuery, [status, project_uuid], (error, results) => {
+    db.query(upsertQuery, [project_uuid, status], (error, results) => {
         if (error) {
             console.error('SQL error:', error);
             return res.status(500).json({ error: 'An error occurred while updating memberslist in sl_projects.', message: "Error", statuscode: 500, data: results });
+        }
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ error: 'Project not found or no changes made.' });
         }
         res.status(200).json({ data: results, project_uuid: project_uuid, statuscode: 200, message: 'Memberslist updated successfully.' });
     });
