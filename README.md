@@ -2,16 +2,11 @@
 ### Lucas H. Schuber
 ### Software developer / Systemutvecklare
 
-This repository contains the primary server for the projects at **Express-Bild**. It is built using Node.js and Express, with a MySQL database for data storage, and includes configuration for CORS and body parsing.
 
-## API Routes
-- GET "/" 
-
-## Getting Started
-Ensure that you have the following installed:
-
-- Node.js
-- MySQL
+## Express Bild Systems this server contains routes for:
+- Svenska Lag
+- Job Type Categorizer
+- TrustPilot
 
 ### Installation
 1. Clone this repository:

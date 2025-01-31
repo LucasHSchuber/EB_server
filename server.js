@@ -453,7 +453,60 @@ app.put('/api/put/checkmemberslist', (req, res) => {
 
 
 
-// ---------------------- XXX ----------------------
+// ---------------------- TRUSTPILOT ----------------------
+
+// GET - projects from trustpilot by date interval
+app.get('/api/trustpilot/projects', (req, res) => {
+    const { startdate, enddate } = req.query;
+
+    if (!startdate || !enddate) {
+        return res.status(400).json({ error: 'Missing startdate and/or enddate for /api/trustpilot/getprojects route.' });
+    }
+
+    const getQuery = `
+        SELECT CASE WHEN
+            o.portaluuid = '2dba368b-6205-11e1-b101-0025901d40ea' THEN 'Express-Bild' WHEN o.portaluuid = 'a535027b-2240-11e0-910e-001676d1636c' THEN 'Studio-Express SE' WHEN o.portaluuid = '9a40c7df-436a-11ea-b287-ac1f6b419120' THEN 'Studio-Express NO'
+        END AS portal,
+        o.orderuuid,
+        o.baseprice,
+        o.deliveryprice,
+        o.discount,
+        o.paid,
+        o.deliveryname,
+        o.useremail,
+        o.project,
+        o.paymenttype,
+        o.inserted AS order_inserted,
+        p.date AS payment_date
+        FROM
+            net_payments AS p
+        JOIN net_orders AS o
+        ON
+            p.co = o.co
+        WHERE
+            p.date >= ? AND p.date <= ? AND o.portaluuid IN(
+                '2dba368b-6205-11e1-b101-0025901d40ea',
+                'a535027b-2240-11e0-910e-001676d1636c',
+                '9a40c7df-436a-11ea-b287-ac1f6b419120'
+            ) AND(
+                o.originating LIKE('epmsweb%') OR o.originating LIKE('epmsmobile%')
+            ) AND o.cancelled IS NULL AND o.debtfeedate IS NULL AND o.baseprice + o.deliveryprice - o.discount <= o.paid AND o.baseprice > 0;
+    `;
+
+    db.query(getQuery, [startdate, enddate], (error, results) => {
+        if (error) {
+            console.error('SQL error:', error);
+            return res.status(500).json({ error: 'An error occurred while retrieving projects.', message: "Error", statuscode: 500 });
+        }
+        // if (results.length === 0) {
+        //     return res.status(404).json({ error: 'No projects found for the given date range.'});
+        // }
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ error: 'Projects not found.' });
+        }
+        res.status(200).json({ data: results, statuscode: 200, message: 'Projects retrieved successfully.' });
+    });
+});
 
 
 
@@ -462,6 +515,274 @@ app.put('/api/put/checkmemberslist', (req, res) => {
 
 
 
+// ---------------------- PROJECT MANAGEMENT SYSTEM (PMS) ----------------------
 
 
-// ---------------------- YYY ----------------------
+
+
+
+
+// ---------------------- OUTSTANDING CLAIMS ----------------------
+
+// GET -
+app.get('/api/outstandingclaims/data1', (req, res) => {
+    const { portaluuid } = req.query;
+
+    if (!portaluuid) {
+        return res.status(500).json({ message: "Missing portaluuid for /api/outstandingclaims/data1"})
+    }
+
+    const getQuery = `
+        SELECT 
+            SUM(baseprice) - SUM(discount) + SUM(deliveryprice) AS adjusted_total,
+            COUNT(orderuuid) AS countOrderuuid,
+            SUM(baseprice) AS sumBaseprice, 
+            SUM(discount) AS sumDiscount, 
+            SUM(deliveryprice) AS sumDeliveryprice
+        FROM 
+            net_orders
+        WHERE 
+            portaluuid = ?
+            AND posted IS NOT NULL
+            AND paid = 0
+            AND cancelled IS NULL
+            AND debtfeedate IS NULL
+            AND collection IS NULL
+            AND baseprice > 100
+            AND posted >= DATE_SUB(CURRENT_DATE, INTERVAL 365 DAY);
+    `;
+
+    db.query(getQuery, [portaluuid], (error, results) => {
+        if (error) {
+            console.error('SQL error:', error);
+            return res.status(500).json({ error: 'An error occurred while retrieving projects.', message: "Error", statuscode: 500 });
+        }
+        // if (results.affectedRows === 0) {
+        //     return res.status(404).json({ error: 'Projects not found.' });
+        // }
+        res.status(200).json({ data1: results, statuscode: 200, message: 'Projects retrieved successfully.' });
+    });
+});
+
+
+app.get('/api/outstandingclaims/data2', (req, res) => {
+    const { portaluuid } = req.query;
+
+    if (!portaluuid) {
+        return res.status(500).json({ message: "Missing portaluuid for /api/outstandingclaims/data2"})
+    }
+
+    const getQuery = `
+        SELECT 
+            SUM(baseprice) - SUM(discount) + SUM(deliveryprice) AS adjusted_total,
+            COUNT(orderuuid) AS countOrderuuid,
+            SUM(baseprice) AS sumBaseprice, 
+            SUM(discount) AS sumDiscount, 
+            SUM(deliveryprice) AS sumDeliveryprice,
+            SUM(fee) AS sumFee
+        FROM 
+            net_orders
+        WHERE 
+            portaluuid = ?
+            AND posted IS NOT NULL
+            AND fee > 0
+            AND paid = 0
+            AND cancelled IS NULL
+            AND debtfeedate IS NOT NULL
+            AND collection IS NULL
+            AND baseprice > 100
+            AND posted >= DATE_SUB(CURRENT_DATE, INTERVAL 365 DAY);
+    `;
+
+    db.query(getQuery, [portaluuid], (error, results) => {
+        if (error) {
+            console.error('SQL error:', error);
+            return res.status(500).json({ error: 'An error occurred while retrieving projects.', message: "Error", statuscode: 500 });
+        }
+        // if (results.affectedRows === 0) {
+        //     return res.status(404).json({ error: 'Projects not found.' });
+        // }
+        res.status(200).json({ data2: results, statuscode: 200, message: 'Projects retrieved successfully.' });
+    });
+});
+
+
+app.get('/api/outstandingclaims/data3', (req, res) => {
+    const { portaluuid } = req.query;
+
+    if (!portaluuid) {
+        return res.status(500).json({ message: "Missing portaluuid for /api/outstandingclaims/data3"})
+    }
+
+    const getQuery = `
+        SELECT 
+            SUM(baseprice) - SUM(discount) + SUM(deliveryprice) AS adjusted_total,
+            COUNT(orderuuid) AS countOrderuuid,
+            SUM(baseprice) AS sumBaseprice, 
+            SUM(discount) AS sumDiscount, 
+            SUM(deliveryprice) AS sumDeliveryprice,
+            SUM(fee) AS sumFee
+        FROM 
+            net_orders
+        WHERE 
+            portaluuid = ?
+            AND posted IS NOT NULL
+            AND fee > 0
+            AND paid = 0
+            AND cancelled IS NULL
+            AND debtfeedate2 IS NOT NULL
+            AND collection IS NULL
+            AND baseprice > 100
+            AND posted >= DATE_SUB(CURRENT_DATE, INTERVAL 365 DAY);
+    `;
+
+    db.query(getQuery, [portaluuid], (error, results) => {
+        if (error) {
+            console.error('SQL error:', error);
+            return res.status(500).json({ error: 'An error occurred while retrieving projects.', message: "Error", statuscode: 500 });
+        }
+        // if (results.affectedRows === 0) {
+        //     return res.status(404).json({ error: 'Projects not found.' });
+        // }
+        res.status(200).json({ data3: results, statuscode: 200, message: 'Projects retrieved successfully.' });
+    });
+});
+
+
+
+app.get('/api/outstandingclaims/data4', (req, res) => {
+    const { portaluuid } = req.query;
+
+    if (!portaluuid) {
+        return res.status(500).json({ message: "Missing portaluuid for /api/outstandingclaims/data4"})
+    }
+
+    const getQuery = `
+        SELECT 
+            SUM(baseprice) - SUM(discount) + SUM(deliveryprice) AS adjusted_total,
+            COUNT(orderuuid) AS countOrderuuid,
+            SUM(baseprice) AS sumBaseprice, 
+            SUM(discount) AS sumDiscount, 
+            SUM(deliveryprice) AS sumDeliveryprice
+        FROM 
+            net_orders
+        WHERE 
+            portaluuid = ?
+            AND posted IS NOT NULL
+            AND paid = 0
+            AND cancelled IS NULL
+            AND collection IS NOT NULL
+            AND baseprice > 100
+            AND posted >= DATE_SUB(CURRENT_DATE, INTERVAL 365 DAY);
+    `;
+
+    db.query(getQuery, [portaluuid], (error, results) => {
+        if (error) {
+            console.error('SQL error:', error);
+            return res.status(500).json({ error: 'An error occurred while retrieving projects.', message: "Error", statuscode: 500 });
+        }
+        // if (results.affectedRows === 0) {
+        //     return res.status(404).json({ error: 'Projects not found.' });
+        // }
+        res.status(200).json({ data4: results, statuscode: 200, message: 'Projects retrieved successfully.' });
+    });
+});
+
+
+app.get('/api/outstandingclaims/data5', (req, res) => {
+    const { selecteddate, portaluuid } = req.query;
+    console.log("selecteddate: ", selecteddate);
+
+    if (!portaluuid || !selecteddate) {
+        return res.status(500).json({ message: "Missing portaluuid and/or selected date for /api/outstandingclaims/data5"})
+    }
+
+    const getQuery = `
+        SELECT CASE WHEN
+            o.portaluuid = '2dba368b-6205-11e1-b101-0025901d40ea' THEN 'Express-Bild' WHEN o.portaluuid = 'a535027b-2240-11e0-910e-001676d1636c' THEN 'Studio-Express SE' WHEN o.portaluuid = '9a40c7df-436a-11ea-b287-ac1f6b419120' THEN 'Studio-Express NO'
+        END AS portal,
+            o.orderuuid,
+            o.baseprice,
+            o.deliveryprice,
+            o.discount,
+            o.project,
+            o.paymenttype,
+            p.date AS payment_date,
+            p.co,
+            p.amount
+        FROM
+            net_payments AS p
+        JOIN net_orders AS o
+        ON
+            p.co = o.co
+        WHERE
+            p.date >= DATE_SUB(?, INTERVAL 14 MONTH) 
+            AND p.date < ?
+            AND o.portaluuid = ?
+            AND (
+                o.originating LIKE('epmsweb%') OR o.originating LIKE('epmsmobile%')
+            ) AND o.cancelled IS NULL AND o.debtfeedate IS NULL AND o.baseprice + o.deliveryprice - o.discount <= o.paid AND o.baseprice > 0;            
+    `;
+
+    db.query(getQuery, [selecteddate, selecteddate, portaluuid], (error, results) => {
+        if (error) {
+            console.error('SQL error:', error);
+            return res.status(500).json({ error: 'An error occurred while retrieving projects.', message: "Error", statuscode: 500 });
+        }
+        // if (results.affectedRows === 0) {
+        //     return res.status(404).json({ error: 'Projects not found.' });
+        // }
+        res.status(200).json({ data5: results, statuscode: 200, message: 'Projects retrieved successfully.' });
+    });
+});
+
+
+app.get('/api/outstandingclaims/data55', (req, res) => {
+    const { selecteddate, portaluuid } = req.query;
+    console.log("selecteddate: ", selecteddate);
+
+    if (!portaluuid || !selecteddate) {
+        return res.status(500).json({ message: "Missing portaluuid and/or selected date for /api/outstandingclaims/data5"})
+    }
+
+    const getQuery = `
+        SELECT
+            YEAR(p.date) AS year,
+            MONTH(p.date) AS month,
+            IF(
+                p.co LIKE('3%') OR p.co LIKE('5%'),
+                'cat',
+                'pictures'
+            ) AS type,
+            COUNT(p.id) AS num_payments,
+            SUM(o.baseprice + o.deliveryprice - o.discount) AS sum_amount
+        FROM
+            net_payments AS p
+        JOIN net_orders AS o
+        ON
+            p.co = o.co
+        WHERE
+            p.date >= DATE_SUB(?, INTERVAL 13 MONTH) AND p.date < ? AND o.portaluuid = ? AND(
+                o.originating LIKE('epmsweb%') OR o.originating LIKE('epmsmobile%')
+            ) AND o.cancelled IS NULL AND o.debtfeedate IS NULL AND o.baseprice + o.deliveryprice - o.discount <= o.paid AND o.baseprice > 0
+        GROUP BY
+            YEAR(p.date),
+            MONTH(p.date),
+            IF(
+                p.co LIKE('3%') OR p.co LIKE('5%'),
+                'cat',
+                'pictures'
+            );
+    `;
+
+    db.query(getQuery, [selecteddate, selecteddate, portaluuid], (error, results) => {
+        if (error) {
+            console.error('SQL error:', error);
+            return res.status(500).json({ error: 'An error occurred while retrieving projects.', message: "Error", statuscode: 500 });
+        }
+        // if (results.affectedRows === 0) {
+        //     return res.status(404).json({ error: 'Projects not found.' });
+        // }
+        res.status(200).json({ data5: results, statuscode: 200, message: 'Projects retrieved successfully.' });
+    });
+});
