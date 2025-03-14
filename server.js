@@ -515,13 +515,6 @@ app.get('/api/trustpilot/projects', (req, res) => {
 
 
 
-// ---------------------- PROJECT MANAGEMENT SYSTEM (PMS) ----------------------
-
-
-
-
-
-
 // ---------------------- OUTSTANDING CLAIMS ----------------------
 
 // GET -
@@ -786,3 +779,105 @@ app.get('/api/outstandingclaims/data55', (req, res) => {
         res.status(200).json({ data5: results, statuscode: 200, message: 'Projects retrieved successfully.' });
     });
 });
+
+
+
+
+
+
+// ---------------------- PRODUCTION DISPLAY ----------------------
+
+// GET - tails
+app.get('/api/productiondisplay/tails', (req, res) => {
+    const ordersQuery = `
+       SELECT COUNT(DISTINCT orderuuid) AS ordersCount 
+        FROM net_store_orders 
+        WHERE posted IS NULL;
+    `;
+    const productsQuery = `
+         SELECT COUNT(*) AS productsCount 
+        FROM net_store_orders 
+        WHERE posted IS NULL;
+    `;
+    db.query(ordersQuery, (ordersError, ordersResults) => {
+        if (ordersError) {
+            console.error('SQL error:', ordersError);
+            return res.status(500).json({ error: 'An error occurred while getting orders', message: "Error", statuscode: 500 });
+        }
+        db.query(productsQuery, (productsError, productsResults) => {
+            if (productsError) {
+                console.error('SQL error:', productsError);
+                return res.status(500).json({ error: 'An error occurred while getting products', message: "Error", statuscode: 500 });
+            }
+            res.status(200).json({ 
+                ordersCount: ordersResults[0].ordersCount, 
+                productsCount: productsResults[0].productsCount, 
+                statuscode: 200, 
+                message: 'OK' 
+            });
+        });
+    });
+});
+
+
+// GET - recopy
+app.get('/api/productiondisplay/recopy', (req, res) => {
+    const recopyQuery = `
+        SELECT COUNT(*) AS count, MIN(timestamp) AS oldest_timestamp
+        FROM net_recopy WHERE is_fixed IS NULL;
+    `;
+    db.query(recopyQuery, (error, result) => {
+        if (error) {
+            console.log("Error when trying to get recopy data from backend", error)
+            return res.status(500).json({ error: error, status: 500, message: "Error when trying to get recopy data from backend" })
+        } else {
+            return res.status(200).json({ status: 200, result, message: "Ok" })
+        }
+    })
+})
+
+
+
+
+
+
+
+// ---------------------- QMS DISPLAY ----------------------
+
+// get qms-data 
+app.get("/api/qmsdisplay/qmsdata", (req, res) => {
+    console.log("GET request received at /api/qmsdisplay/qmsdata");
+
+    const getQuery = `
+      SELECT q.grouppictures, q.portraits, pq.subjects, r.done, u.id AS user_id, u.username
+      FROM pms_retouchers_qms q
+      LEFT JOIN pms_retouchers r ON q.retoucher_id = r.id
+      LEFT JOIN pms_qms pq ON pq.activity_uuid = r.activity_uuid
+      LEFT JOIN dx_users u ON q.user_id = u.id
+      LEFT JOIN pms_admin_qms p ON r.activity_uuid = p.activity_uuid
+    `;
+
+    // const getQuery = `
+    // SELECT u.id AS user_id, u.username, SUM(q.grouppictures) AS total_grouppictures, SUM(q.portraits) AS total_portraits, SUM(pq.subjects) AS total_subjects,
+    // COUNT(r.done) AS total_done  -- If you want to count 'done' tasks
+    // FROM pms_retouchers_qms q
+    // LEFT JOIN pms_retouchers r ON q.retoucher_id = r.id
+    // LEFT JOIN pms_qms pq ON pq.activity_uuid = r.activity_uuid
+    // LEFT JOIN dx_users u ON q.user_id = u.id
+    // LEFT JOIN pms_admin_qms p ON r.activity_uuid = p.activity_uuid
+    // GROUP BY u.id, u.username;
+    // `;
+  
+    db.query(getQuery, (error, results) => {
+      if (error) {
+        console.error("SQL error:", error);
+        return res.status(500).json({ error: "An error occurred while fetching qms-data." });
+      }
+      if (results.length === 0) {
+        console.log("No qms-data found");
+        return res.status(404).json({ status: 404, error: "Qms-data not found." });
+      }
+      res.status(200).json({ qmsData: results, status: 200 });
+    });
+  });
+  
