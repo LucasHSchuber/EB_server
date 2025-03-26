@@ -7,6 +7,9 @@
 - Svenska Lag
 - Job Type Categorizer
 - TrustPilot
+- QMS display
+- Production display
+- Outstanding claims
 
 ### Installation
 1. Clone this repository:

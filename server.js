@@ -837,6 +837,61 @@ app.get('/api/productiondisplay/recopy', (req, res) => {
 })
 
 
+// GET - pd_data
+app.get('/api/productiondisplay/pd_data', (req, res) => {
+    const pdDataQuery = `
+        SELECT *
+        FROM pd_data;
+    `;
+    db.query(pdDataQuery, (error, result) => {
+        if (error) {
+            console.log("Error when trying to get recopy data from backend", error)
+            return res.status(500).json({ error: error, status: 500, message: "Error when trying to get recopy data from backend" })
+        } else {
+            return res.status(200).json({ status: 200, result, message: "Ok" })
+        }
+    })
+})
+
+
+// GET - net_orders
+app.get('/api/productiondisplay/net_orders', (req, res) => {
+    const NetOrdersQuery = `
+    SELECT 
+        SUM(CASE 
+                WHEN DATE(posted) = CURDATE() AND LEFT(co, 1) = '3' THEN 1 
+                ELSE 0 
+            END) AS today_orders_3,
+        SUM(CASE 
+                WHEN DATE(posted) = CURDATE() AND LEFT(co, 1) <> '3' THEN 1 
+                ELSE 0 
+            END) AS today_orders_other,
+        SUM(CASE 
+                WHEN DATE(posted) >= CURDATE() - INTERVAL 8 DAY 
+                AND DATE(posted) < CURDATE() 
+                AND LEFT(co, 1) = '3' 
+                THEN 1 
+                ELSE 0 
+            END) AS week_ago_orders_3,
+        SUM(CASE 
+                WHEN DATE(posted) >= CURDATE() - INTERVAL 8 DAY
+                AND DATE(posted) < CURDATE() 
+                AND LEFT(co, 1) <> '3' THEN 1 
+                ELSE 0 
+            END) AS week_ago_orders_other
+    FROM net_orders;
+    `;
+    db.query(NetOrdersQuery, (error, result) => {
+        if (error) {
+            console.log("Error when trying to get net_orders data from backend", error)
+            return res.status(500).json({ error: error, status: 500, message: "Error when trying to get net_orders data from backend" })
+        } else {
+            return res.status(200).json({ status: 200, result, message: "Ok" })
+        }
+    })
+})
+
+
 
 
 
@@ -855,19 +910,7 @@ app.get("/api/qmsdisplay/qmsdata", (req, res) => {
       LEFT JOIN pms_qms pq ON pq.activity_uuid = r.activity_uuid
       LEFT JOIN dx_users u ON q.user_id = u.id
       LEFT JOIN pms_admin_qms p ON r.activity_uuid = p.activity_uuid
-    `;
-
-    // const getQuery = `
-    // SELECT u.id AS user_id, u.username, SUM(q.grouppictures) AS total_grouppictures, SUM(q.portraits) AS total_portraits, SUM(pq.subjects) AS total_subjects,
-    // COUNT(r.done) AS total_done  -- If you want to count 'done' tasks
-    // FROM pms_retouchers_qms q
-    // LEFT JOIN pms_retouchers r ON q.retoucher_id = r.id
-    // LEFT JOIN pms_qms pq ON pq.activity_uuid = r.activity_uuid
-    // LEFT JOIN dx_users u ON q.user_id = u.id
-    // LEFT JOIN pms_admin_qms p ON r.activity_uuid = p.activity_uuid
-    // GROUP BY u.id, u.username;
-    // `;
-  
+    `;  
     db.query(getQuery, (error, results) => {
       if (error) {
         console.error("SQL error:", error);
